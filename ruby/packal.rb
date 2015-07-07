@@ -1,3 +1,7 @@
+require 'rest-client'
+require 'base64'
+require 'json'
+
 class Packal
 	def self.queue(json)
 		begin
