@@ -1,4 +1,17 @@
 <?php
+/**
+ * This file contains a class to help you submit your workflows / themes (/ and reports) to
+ * Packal.org. Use this code if you build your workflows with a custom build script and want
+ * to add in automatic submission to Packal.org as part of the build. Check Packal.org for
+ * documentation on how workflows need to be structured.
+ *
+ * See the `example.php` for usage examples of this class
+ */
+
+
+/**
+ * Here are three URLs for Packal that are related to different servers.
+ */
 
 // Development
 // define( 'PACKAL_BASE_API_URL', 'http://localhost:3000/api/v1/alfred2/' );
@@ -16,9 +29,13 @@ class Packal {
 	 *
 	 * @param string $type   valid options: 'worfklow', 'theme', 'report'
 	 * @param array $params  the submission parameters
+	 * @param string $username your Packal.org username
+	 * @param string $password your Packal.org password
 	 */
 	public function __construct( $type, $params, $username, $password ) {
+		// These are the valid types to submit
 		$types = [ 'workflow', 'theme', 'report' ];
+		// Exit early if the type is not permitted
 		if ( ! in_array( $type, $types ) ) {
 			die( "$type is not a valid type. Valid types are: " . implode( ', ', $types ) );
 		}
@@ -30,8 +47,9 @@ class Packal {
 		curl_setopt( $this->ch, CURLOPT_POST, true );
 		curl_setopt( $this->ch, CURLOPT_SAFE_UPLOAD, true );
 
-		// Call the submit method
+		// Call the submit method for the particular type
 		if ( ! call_user_func_array( [ $this, $type ], [ $params ] ) ) {
+			// Would should never get here because we'll exit earlier in the script
 			die( 'Could not call user method' );
 			// This should call an exception, maybe?
 			return false;
@@ -100,14 +118,16 @@ class Packal {
 	/**
 	 * Builds the post fields
 	 *
-	 * The standard "http_build_query()" did not work.
+	 * The standard "http_build_query()" did not work for the nested file params, so we needed a
+	 * different way to build the POST request for workflow submissions. See curl_custom_postfields
+	 * below for the weird code there.
 	 */
-	private function build_data( ) {
+	private function build_data() {
 		if ( isset( $this->postData['workflow_revision'] ) ) {
 			$this->postData['workflow_revision[version]'] = $this->postData['workflow_revision']['version'];
 			unset( $this->postData['workflow_revision'] );
 			// Pass to a weird function that I did not write but that seems to work
-			self::curl_custom_postfields( $this->ch, $this->postData, [ $this->params['file'] ] );
+			$this->curl_custom_postfields( $this->ch, $this->postData, [ $this->params['file'] ] );
 		} else {
 			// For themes and reports
 			curl_setopt( $this->ch, CURLOPT_POSTFIELDS,  http_build_query( $this->postData ) );
